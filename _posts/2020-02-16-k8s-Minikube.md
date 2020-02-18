@@ -20,7 +20,7 @@ CentOS Linux release 7.7.1908 (Core）
 
 #### 安装docker（[参考Centos安装docker](https://edwardjph.github.io/2020/02/12/docker.html)）
 
-### 二、设置系统代理（Minikube使用）
+### 二、设置系统代理（[Minikube使用](https://minikube.sigs.k8s.io/docs/reference/networking/proxy/)）
 
 ```shell
 vi /etc/profile
@@ -112,16 +112,13 @@ install minikube /usr/local/bin/
 4. 修改sysctl内核参数
 
    ```shell
-   vi /etc/sysctl.d/k8s.conf
+   cat <<EOF > /etc/sysctl.d/k8s.conf
    net.bridge.bridge-nf-call-ip6tables = 1
    net.bridge.bridge-nf-call-iptables = 1
-   vm.swappiness=0
-   ```
-
-   ```shell
+   EOF
    sysctl --system
-   ```
-
+```
+   
 5. 设置docker为开机自启
 
    ```shell
