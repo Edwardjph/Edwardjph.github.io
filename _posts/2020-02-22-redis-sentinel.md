@@ -74,7 +74,7 @@ cp redis-5.0.7/redis.conf redis-5.0.7/redis-sentinel/redis-36379.conf
 
   **slaveof：设置本机为slave服务时，设置master服务的IP地址及端口，在Redis启动时，它会自动从master进行数据同步**
 
-- 从节点：redis-36381
+- 从节点：redis-36379
 
   ```shell
   daemonize yes
