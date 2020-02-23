@@ -49,15 +49,15 @@ cp redis-5.0.7/redis.conf redis-5.0.7/redis-sentinel/redis-36379.conf
   dbfilename dump-16379.db
   ```
 
-  **daemonize yes：使用yes启用守护进程（后台启动，方便单机操作）**
+  **daemonize yes：**使用yes启用守护进程（后台启动，方便单机操作）
 
-  **pidfile：当Redis以守护进程方式运行时，Redis默认会把pid写入/var/run/redis.pid文件，可以通过pidfile指定**
+  **pidfile：**当Redis以守护进程方式运行时，Redis默认会把pid写入/var/run/redis.pid文件，可以通过pidfile指定
 
-  **bind：默认的接口是127.0.0.1，也就是本地回环地址。这样的话，访问redis服务只能通过本机的客户端连接，而无法通过远程连接。**
+  **bind：**默认的接口是127.0.0.1，也就是本地回环地址。这样的话，访问redis服务只能通过本机的客户端连接，而无法通过远程连接。
 
-  **protected-mode：为了禁止外网访问redis，如果启用了，则只能够通过lookback ip（127.0.0.1）访问Redis**
+  **protected-mode：**为了禁止外网访问redis，如果启用了，则只能够通过lookback ip（127.0.0.1）访问Redis
 
-  **dbfilename：指定本地数据库文件名，默认值为dump.rdb**
+  **dbfilename：**指定本地数据库文件名**，**默认值为dump.rdb
 
 - 从节点：redis-26379
 
@@ -72,7 +72,7 @@ cp redis-5.0.7/redis.conf redis-5.0.7/redis-sentinel/redis-36379.conf
   slaveof 127.0.0.1 16379
   ```
 
-  **slaveof：设置本机为slave服务时，设置master服务的IP地址及端口，在Redis启动时，它会自动从master进行数据同步**
+  **slaveof：**设置本机为slave服务时，设置master服务的IP地址及端口，在Redis启动时，它会自动从master进行数据同步
 
 - 从节点：redis-36379
 
@@ -128,13 +128,13 @@ sentinel parallel-syncs master 1
 logfile /var/log/redis/sentinel-16380.log
 ```
 
-**sentinel monitor master：指定哨兵监控的主机ip 端口 仲裁数（当有超过仲裁数的哨兵认为master失联，则master客观下线）**
+**sentinel monitor master：**指定哨兵监控的主机ip 端口 仲裁数（当有超过仲裁数的哨兵认为master失联，则master客观下线）
 
-**sentinel down-after-milliseconds master：指定主节点应答哨兵的最大时间间隔，超过这个时间，哨兵主观上认为主节点下线，默认30秒**
+**sentinel down-after-milliseconds master：**指定主节点应答哨兵的最大时间间隔，超过这个时间，哨兵主观上认为主节点下线，默认30秒
 
-**sentinel failover-timeout master：故障转移的超时时间，默认三分钟**
+**sentinel failover-timeout master：**故障转移的超时时间，默认三分钟
 
-**sentinel parallel-syncs master：指定了在发生failover主备切换时，最多可以有多少个slave同时对新的master进行同步。这个数字越小，完成failover所需的时间就越长；反之，但是如果这个数字越大，就意味着越多的slave因为replication而不可用。可以通过将这个值设为1，来保证每次只有一个slave，处于不能处理命令请求的状态。**
+**sentinel parallel-syncs master：**指定了在发生failover主备切换时**，**最多可以有多少个slave同时对新的master进行同步**。**这个数字越小，完成failover所需的时间就越长；反之，但是如果这个数字越大，就意味着越多的slave因为replication而不可用。可以通过将这个值设为1，来保证每次只有一个slave，处于不能处理命令请求的状态。
 
 另外两个哨兵节点配置相同，修改对应端口号
 
