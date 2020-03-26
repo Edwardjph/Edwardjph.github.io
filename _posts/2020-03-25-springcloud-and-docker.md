@@ -5,7 +5,7 @@ tags: ReadingNotes
 
 ### 第三章、开始使用spring cloud实战微服务
 
-#### spring data jpa：
+#### spring data jpa
 
 ```xml
 <!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-data-jpa -->
@@ -72,7 +72,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
 @Component泛指组件，当组件不好归类的时候，我们可以使用这个注解进行标注。
 
-#### lombok：
+#### lombok
 
 先安装插件
 
@@ -109,7 +109,7 @@ public class User {
 
 @AllArgsConstructor：生成一个全参数的构造方法
 
-#### log4j2：
+#### log4j2
 
 ```xml
 	<dependency>
@@ -172,7 +172,7 @@ Loggers:
           - ref: ROLLING_FILE
 ```
 
-#### 为项目整合spring boot actuator：
+#### 为项目整合spring boot actuator
 
 监控程序，了解应用程序的运行状态
 
