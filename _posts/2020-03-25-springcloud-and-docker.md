@@ -1,8 +1,6 @@
 ---
 title: springcloud and docker
 tags: ReadingNotes
-toc:
-  selectors: "h3,h4,h5,h6"
 ---
 
 ### 第三章、开始使用spring cloud实战微服务
