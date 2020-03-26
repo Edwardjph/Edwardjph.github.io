@@ -1,6 +1,6 @@
 ---
-title：springcloud and docker
-tags：Reading notes
+title: springcloud and docker
+tags: Reading notes
 ---
 
 ### 第三章、开始使用spring cloud实战微服务
