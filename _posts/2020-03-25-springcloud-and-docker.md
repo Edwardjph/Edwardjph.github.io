@@ -190,3 +190,145 @@ Loggers:
 默认情况下，除`shutdown`之外的所有端点均处于启用状态，但需自己暴露
 
 [详细端口信息及操作](https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-features.html#production-ready-enabling)
+
+### 第四章、微服务注册与发现
+
+```xml
+<modules>
+    <module>microservice-provider-user</module>
+    <module>microservice-consumer-movice</module>
+</modules>
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+    </dependency>
+</dependencies>        
+```
+
+#### eureka高可用
+
+在一台电脑上演示，需修改hosts文件，Windows路径：`C:\Windows\System32\drivers\etc\hosts`
+
+```
+127.0.0.1 peer1 peer2
+```
+
+application.yml
+
+```yml
+spring:
+  application:
+    name: microservice-discovery-eureka
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://peer1:8761/eureka/,http://peer2:8762/eureka/
+
+
+---
+spring:
+#指定profile=peer1
+  profiles: peer1
+server:
+  port: 8761
+eureka:
+  instance:
+  #指定当profile=peer1时，主机名是peer1
+    hostname: peer1
+
+---
+spring:
+  profiles: peer2
+server:
+  port: 8762
+eureka:
+  instance:
+    hostname: peer2
+```
+
+使用连字符（---）将application文件分为三段，第二第三段指定了properties的值，表示它所在的那段内容应用在哪个profile里。第一段没有指定，对所有profile生效。
+
+分别启动
+
+```
+java -jar microservice-discovery-eureka-0.0.1-SNAPSHOT.jar --spring.profiles.active=peer1
+java -jar microservice-discovery-eureka-0.0.1-SNAPSHOT.jar --spring.profiles.active=peer2
+```
+
+访问http://localhost:8761
+
+![2020-03-27-12-38](\assets\images\springcloud-and-docker\2020-03-27-12-38.png)
+
+将应用注册到eureka集群
+
+```yml
+eureka:
+  client:
+    service-url:
+      defaultZone: http://peer1:8761/eureka/,http://peer2:8762/eureka/
+```
+
+#### 用户认证
+
+添加security依赖
+
+```xml
+<!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-security -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+    <version>2.2.5.RELEASE</version>
+</dependency>
+```
+
+application.yml
+
+```yml
+spring:
+  security:
+    user:
+      name: user
+      password: 123456
+eureka:
+  client:
+    service-url:
+      defaultZone: http://user:123456@peer1:8761/eureka/,http://user:123456@peer2:8762/eureka/
+```
+
+此时运行会报错，因为eureka缺少CSRF（跨站点请求伪造）令牌，需要为`/eureka/**`端点禁用此要求[更多详情](https://cloud.spring.io/spring-cloud-static/spring-cloud-netflix/2.1.2.RELEASE/single/spring-cloud-netflix.html#_securing_the_eureka_server)
+
+```java
+@EnableWebSecurity
+class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http.csrf().ignoringAntMatchers("/eureka/**");
+        super.configure(http);
+    }
+}
+```
+
+将微服务注册到需要认证的eureka
+
+```yml
+eureka:
+  client:
+    service-url:
+      defaultZone: http://user:123456@peer1:8761/eureka/,http://user:123456@peer2:8762/eureka/
+```
+
+#### eureka自我保护
+
+有时会看到eureka进入保护模式，如下
+
+![2020-03-27-13-09](\assets\images\springcloud-and-docker\2020-03-27-13-09.png)
+
+因为上一分钟收到的心跳数（Renews）小于期望收到的心跳数（Renews threshold）。但这种情况可能是因为网络故障导致的，微服务其实本身是健康的，eureka就会进入自我保护模式，不再删除服务注册表中的数据，宁可同时保留所有微服务也不盲目注销任何健康的微服务。可手动禁用自我保护模式
+
+```
+eureka.server.enable-self-preservation = false
+```
+
