@@ -193,6 +193,8 @@ Loggers:
 
 ### 第四章、微服务注册与发现
 
+eureka server
+
 ```xml
 <modules>
     <module>microservice-provider-user</module>
@@ -204,6 +206,15 @@ Loggers:
         <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
     </dependency>
 </dependencies>        
+```
+
+eureka client
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
 ```
 
 #### eureka高可用
@@ -326,9 +337,297 @@ eureka:
 
 ![2020-03-27-13-09](\assets\images\springcloud-and-docker\2020-03-27-13-09.png)
 
-因为上一分钟收到的心跳数（Renews）小于期望收到的心跳数（Renews threshold）。但这种情况可能是因为网络故障导致的，微服务其实本身是健康的，eureka就会进入自我保护模式，不再删除服务注册表中的数据，宁可同时保留所有微服务也不盲目注销任何健康的微服务。可手动禁用自我保护模式
+自我保护模式的激活条件是：上一分钟，`Renews(last min)<Renews threshold`，默认等待五分钟（可通过`eureka.server.wait-time-in-ms-when-sync-empty`配置）后可看到如上信息
+
+`Renews threshold`:期望收到的心跳数，等于服务数乘以每分钟心跳数（默认每分钟两次，可通过`eureke.instance.lease-renewal-interval-in-seconds`配置）乘以续约比例阀值（默认0.85，可通过`eureka.server.renewal-percent-threshold`配置），eg：一共有五个服务，`Renews threshold`=5×2×0.85=8
+
+`Renews(last min)`:上一分钟收到的心跳数，等于服务数乘以每分钟心跳数（默认每分钟两次，可通过`eureke.instance.lease-renewal-interval-in-seconds`配置），eg：一共五个服务，`Renews(last min)`=5×2=10
+
+自我保护模式被激活后，它不会从注册列表中剔除因长时间没收到心跳导致租期过期的服务，而是等待修复，直到心跳恢复正常之后，它自动退出自我保护模式。自我保护模式可有效避免网络分区故障导致服务不可用问题
+
+但在单机环境下，很容易触发自我保护模式，导致以关闭的服务无法及时剔除，使用ribbon时访问到已关闭的服务，解决办法：
+
+1、禁用自我保护模式  (eureka server)
 
 ```
 eureka.server.enable-self-preservation = false
+```
+
+2、降低阀值，原理：降低`Renews threshold`   (eureka server)
+
+```
+eureka.server.renewal-percent-threshold = 0.5
+```
+
+3、加快eureka client发送心跳频率，原理：增大`Renews(last min)`  (eureka client)
+
+```
+eureke.instance.lease-renewal-interval-in-seconds = 10
+```
+
+同时由于eureka server清理无效节点的时间间隔默认为60秒，依然容易出现以上情况，可以适当减小  (eureka server)
+
+```
+eureka.server.eviction-interval-timer-in-ms = 30000
+```
+
+也可设置eureka server至上一次收到client的心跳之后，等待下一次心跳的超时时间，在这个时间内若没收到下一次心跳，则将移除该instance
+
+```
+eureke.instance.lease-expiration-duration-in-seconds = 6
+```
+
+#### 多网卡环境下的ip选择
+
+1. 忽略指定名称的网卡
+
+   ```yml
+   spring:
+     cloud:
+       inetutils:
+         ignored-interfaces:
+           - docker0
+           - veth.*
+   ```
+
+   这样就忽略了docker0以及veth开头的网卡
+
+2. 使用正则表达式，指定使用的网络地址
+
+   ```yml
+   spring:
+     cloud:
+       inetutils:
+           preferred-networks:
+               - 192.168
+               - 10.0
+   ```
+
+3. 只使用站点本地地址
+
+   ```yml
+   spring:
+     cloud:
+       inetutils:
+       	use-only-site-local-interfaces: true
+   ```
+
+4. 手动指定ip
+
+   ```yml
+   eureka:
+   	instance:
+   		ip-address: 127.0.0.1
+   ```
+
+以上都需开启
+
+```yml
+eureka:
+    instance:
+        prefer-ip-address: true
+```
+
+#### eureka的健康检查（需整合actuator）
+
+应用程序将主动向eureka发送健康状况（来自/actuator/health）
+
+```yml
+eureka:
+  client:
+    healthcheck:
+      enabled: true
+```
+
+### 第五章、使用Ribbon实现客户端侧负载均衡
+
+#### 为服务消费者整合Ribbon
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-ribbon</artifactId>
+</dependency>
+```
+
+由于在`spring-cloud-starter-netflix-eureka-client`依赖中已包含`spring-cloud-starter-netflix-ribbon`，因此无须再次引入
+
+为RestTemplate添加@LoadBalanced注解
+
+```java
+@Bean
+@LoadBalanced
+public RestTemplate restTemplate(){
+    return new RestTemplate();
+}
+```
+
+Controller
+
+```java
+@RestController
+public class MoviceController {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MoviceController.class);
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Autowired
+    private LoadBalancerClient loadBalancerClient;
+
+    @GetMapping("/user/{id}")
+    public User findById(@PathVariable Long id){
+        return this.restTemplate.getForObject("http://microservice-provider-user/" + id,
+                User.class);
+    }
+
+    @GetMapping("/log-user/instance")
+    public void logUserInstance(){
+        ServiceInstance serviceInstance = this.loadBalancerClient.choose(
+                "microservice-provider-user");
+        //打印当前选择的是哪个节点
+        MoviceController.LOGGER.info("{}:{}:{}", serviceInstance.getServiceId(),
+                serviceInstance.getHost(), serviceInstance.getPort());
+    }
+}
+```
+
+当Ribbon与eureka配合使用的时候，会自动将虚拟主机名映射成微服务的网络地址，所以可以直接使用`http://microservice-provider-user/`虚拟主机名不能包含`_`
+
+**补充：**
+
+`@PathVariable`：当使用someUrl/{paramId}样式映射时，这时的paramId可通过 @Pathvariable注解绑定它传过来的值到方法的参数上。
+
+`@RequestHeader`：可以把Request请求header部分的值绑定到方法的参数上
+
+```java
+public void displayHeaderInfo(@RequestHeader("Accept-Encoding") String encoding,
+                              @RequestHeader("Keep-Alive") long keepAlive)  {
+}
+```
+
+`@CookieValue`：可以把Request header中关于cookie的值绑定到方法的参数上
+
+```java
+public void displayHeaderInfo(@CookieValue("JSESSIONID") String cookie)  {
+}
+```
+
+`@RequestParam`：用来处理Content-Type: 为 `application/x-www-form-urlencoded`编码的内容，提交方式GET、POST
+
+```java
+public String setupForm(@RequestParam("petId") int petId, ModelMap model) {
+}
+```
+
+`@RequestBody`：用来处理Content-Type: 不是`application/x-www-form-urlencoded`编码的内容，例如application/json, application/xml等
+
+```java
+public void handle(@RequestBody String body, Writer writer) throws IOException {
+}
+```
+
+#### Ribbon配置自定义
+
+1、用Java代码自定义Ribbon配置
+
+创建Ribbon的配置类
+
+```java
+/**
+ * 该类为Ribbon的配置类
+ * 注意：该类不应该在主应用程序上下文的@ComponentScan所扫描的包中
+ */
+@Configuration
+@ExcludeFromComponentScan
+public class RibbonConfiguration {
+    @Bean
+    public IRule ribbonRule(){
+        //负载均衡规则，改为随机
+        return new RandomRule();
+    }
+}
+```
+
+定义注解
+
+```java
+public @interface ExcludeFromComponentScan {
+}
+```
+
+启动类
+
+```java
+@SpringBootApplication
+@RibbonClient(name = "microservice-provider-user", configuration =
+        RibbonConfiguration.class)
+@ComponentScan(excludeFilters = { @ComponentScan.Filter(type = FilterType.ANNOTATION, value = ExcludeFromComponentScan.class) })//排除被@ExcludeFromComponentScan的包
+public class MicroserviceSimpleConsumerMoviceApplication {
+
+    @Bean
+    @LoadBalanced
+    public RestTemplate restTemplate(){
+        return new RestTemplate();
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(MicroserviceSimpleConsumerMoviceApplication.class, args);
+    }
+
+}
+```
+
+必须注意的是，本例中的RibbonConfiguration类不能存放在主应用程序上下文的@componentScan所扫描的保中，否则该类中的配置信息将被所有的@RibbonClient共享
+
+2、使用属性自定义Ribbon配置
+
+```yml
+microservice-provider-user:
+  ribbon:
+    NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RandomRule
+```
+
+#### 脱离Eureka使用Ribbon
+
+在没有eureka的服务上，引入
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-ribbon</artifactId>
+</dependency>
+```
+
+```yml
+microservice-provider-user:
+  ribbon:
+  	listOfServers: localhost:8000,localhost:8001
+```
+
+有eureka但想单独是用ribbon，不使用eureka的服务发现功能
+
+```yml
+ribbon:
+  eureka:
+    enabled: false
+```
+
+只让指定名称的ribbon client使用指定的url，其他依旧与eureka配合使用：
+
+```
+<clientName>.ribbon.NIWSServerListClassName = com.netflix.loadbalancer.ConfigurationBasedServerList
+<clientName>.ribbon.listOfServers = localhost:8000,localhost:8001
+```
+
+#### 饥饿加载
+
+指定名称的Ribbon Client第一次请求的时候，对应的上下文才会加载，因此，首次请求会比较慢，可以配置饥饿加载：
+
+```yml
+ribbon:
+  eager-load:
+    clients: microservice-provider-user, client2
+    enabled: true
 ```
 
