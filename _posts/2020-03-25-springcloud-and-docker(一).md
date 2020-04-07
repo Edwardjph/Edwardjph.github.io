@@ -1,5 +1,5 @@
 ---
-title: springcloud and docker
+title: springcloud and docker(一)
 tags: ReadingNotes
 ---
 
@@ -629,5 +629,218 @@ ribbon:
   eager-load:
     clients: microservice-provider-user, client2
     enabled: true
+```
+
+### 第六章、使用Feign实现声明式REST调用
+
+#### 为服务消费者整合Feign
+
+```xml
+<!-- https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-openfeign -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-openfeign</artifactId>
+    <version>2.2.2.RELEASE</version>
+</dependency>
+```
+
+Feign接口
+
+```java
+@FeignClient(name = "microservice-provider-user")
+public interface UserFeignClient {
+    @RequestMapping(value = "/{id}", method = RequestMethod.GET)
+    public User findById(@PathVariable("id")Long id);
+}
+
+```
+
+controller
+
+```java
+@RestController
+public class MoviceController {
+    @Autowired
+    private UserFeignClient userFeignClient;
+
+    @GetMapping("/user/{id}")
+    public User findById(@PathVariable Long id){
+        return this.userFeignClient.findById(id);
+    }
+}
+```
+
+启动类添加@EnableFeignClients注解
+
+```java
+@EnableFeignClients
+@SpringBootApplication
+public class MicroserviceSimpleConsumerMoviceApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(MicroserviceSimpleConsumerMoviceApplication.class, args);
+    }
+}
+```
+
+#### 自定义Feign配置
+
+##### 使用java代码配置Feign
+
+配置类
+
+```java
+/**
+ * 该类可以不写@Configuration注解，如果使用了@Configuration注解，那么
+ * 该类不能放在主应用程序上下文@ComponentScan所扫描的包中
+ */
+public class FeignConfiguration {
+    /**
+     * 将契约改为feign原生动默认契约，这样就可以使用feign自带的注解了
+     * @return 默认的feign契约
+     */
+    @Bean
+    public Contract feignContract(){
+        return new feign.Contract.Default();
+    }
+
+    @Bean
+    Logger.Level feignLoggerLevel(){
+        return Logger.Level.FULL;
+    }
+}
+```
+
+Feign接口
+
+```java
+@FeignClient(name = "microservice-provider-user", configuration = FeignConfiguration.class)
+public interface UserFeignClient {
+    /**
+     * 使用feign自带的注解@RequestLine
+     * @param id 用户id
+     * @return 用户信息
+     */
+    @RequestLine("GET /{id}")
+    public User findById(@Param("id") Long id);
+}
+
+```
+
+##### 使用属性配置
+
+```yml
+#全局配置
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+        loggerLevel: full
+#指定FeignCliend配置
+feign:
+  client:
+    config:
+      microservice-provider-user:
+        loggerLevel: basic
+```
+
+#### Feign对压缩的支持
+
+```yml
+feign:
+  compression:
+    request:
+      enabled: true
+    response:
+      enabled: true
+```
+
+#### Feign日志
+
+```yml
+feign:
+  client:
+    config:
+      default:
+        loggerLevel: full
+logging:
+  level:
+  	#将Feign接口的日志级别设置成DEBUG，因为Feign的Logger.Level只对DEBUG做出响应
+    com.itmuch.cloud.microservicesimpleconsumermovice.feign.UserFeignClient: DEBUG
+```
+
+loggerLevel的值有：
+
+- NONE：不记录任何日志（默认值）
+- BASIC：仅记录请求方法、URL、响应状态代码以及执行时间
+- HEADERS：记录BASIC级别的基础上，记录请求和响应的header
+- FULL：记录请求和响应的header、body和元数据
+
+#### 使用Feign构造多参数请求
+
+##### GET请求多参数
+
+```java
+	/**
+     * 两种get请求多参数方法
+     *
+     */
+    @RequestMapping(value = "/get1", method = RequestMethod.GET)
+    public User get1(@RequestParam("id") Long id, @RequestParam("username") String username);
+
+    @RequestMapping(value = "/get2", method = RequestMethod.GET)
+    public User get2(@RequestParam Map<String, Object> map);
+```
+
+##### POST请求多参数
+
+```java
+	/**
+     * post请求多参数方法
+     */
+    @RequestMapping(value = "/post", method = RequestMethod.POST)
+    public User post(@RequestBody User user);
+```
+
+#### 使用Feign上传文件
+
+添加依赖
+
+```xml
+<!-- https://mvnrepository.com/artifact/io.github.openfeign.form/feign-form -->
+        <dependency>
+            <groupId>io.github.openfeign.form</groupId>
+            <artifactId>feign-form</artifactId>
+            <version>3.8.0</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/io.github.openfeign.form/feign-form-spring -->
+        <dependency>
+            <groupId>io.github.openfeign.form</groupId>
+            <artifactId>feign-form-spring</artifactId>
+            <version>3.8.0</version>
+        </dependency>
+```
+
+Feign Client
+
+```java
+@FeignClient(name = "microservice-file-upload", configuration =
+        UploadFeignClient.MultiparSupportConfig.class)
+public interface UploadFeignClient {
+    @RequestMapping(value = "/upload", method = RequestMethod.POST,
+                produces = {MediaType.APPLICATION_JSON_VALUE},
+                consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseBody
+    String handleFileUpload(@RequestPart(value = "file")MultipartFile file);
+
+    class MultiparSupportConfig {
+        @Bean
+        public Encoder feignFormEncoder() {
+            return new SpringFormEncoder();
+        }
+    }
+}
+
 ```
 
