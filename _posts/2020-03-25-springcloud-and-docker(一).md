@@ -549,20 +549,12 @@ public class RibbonConfiguration {
 }
 ```
 
-定义注解
-
-```java
-public @interface ExcludeFromComponentScan {
-}
-```
-
 启动类
 
 ```java
 @SpringBootApplication
 @RibbonClient(name = "microservice-provider-user", configuration =
         RibbonConfiguration.class)
-@ComponentScan(excludeFilters = { @ComponentScan.Filter(type = FilterType.ANNOTATION, value = ExcludeFromComponentScan.class) })//排除被@ExcludeFromComponentScan的包
 public class MicroserviceSimpleConsumerMoviceApplication {
 
     @Bean
