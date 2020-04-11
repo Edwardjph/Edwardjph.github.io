@@ -539,7 +539,6 @@ public void handle(@RequestBody String body, Writer writer) throws IOException {
  * 注意：该类不应该在主应用程序上下文的@ComponentScan所扫描的包中
  */
 @Configuration
-@ExcludeFromComponentScan
 public class RibbonConfiguration {
     @Bean
     public IRule ribbonRule(){
