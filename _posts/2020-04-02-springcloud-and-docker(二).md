@@ -56,11 +56,11 @@ public User findByIdFallback(Long id, Throwable throwable) {
 
 正常运行将得到
 
-![2020-04-10-14-15](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-10-14-15.png)
+![2020-04-10-14-15](\assets\images\springcloud-and-docker\2020-04-10-14-15.png)
 
 关闭`microservice-provider-user`
 
-![2020-04-10-14-17](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-10-14-17.png)
+![2020-04-10-14-17](\assets\images\springcloud-and-docker\2020-04-10-14-17.png)
 
 **当请求失败、被拒绝、超时或者断路器打开时，都会进入回退方法。但是进入回退方法并不意味着断路器已经被打开。**
 
@@ -68,11 +68,11 @@ public User findByIdFallback(Long id, Throwable throwable) {
 
 此时，由于`microservice-provider-user`关闭，已经返回默认用户，但是断路器依然关闭
 
-![2020-04-10-14-23](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-10-14-23.png)
+![2020-04-10-14-23](\assets\images\springcloud-and-docker\2020-04-10-14-23.png)
 
 疯狂刷新http://localhost:8010/user/1（默认5s内失败20次，将开启断路器）
 
-![2020-04-10-14-31](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-10-14-31.png)
+![2020-04-10-14-31](\assets\images\springcloud-and-docker\2020-04-10-14-31.png)
 
 #### Hystrix的隔离策略：
 
@@ -236,13 +236,13 @@ spring:
 
 启动，访问http://localhost:8030/hystrix
 
-![2020-04-10-15-03](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-10-15-03.png)
+![2020-04-10-15-03](\assets\images\springcloud-and-docker\2020-04-10-15-03.png)
 
 在url一栏输入http://localhost:8010/actuator/hystrix.stream，点击Monitor Stream
 
-![2020-04-10-15-05](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-10-15-05.png)
+![2020-04-10-15-05](\assets\images\springcloud-and-docker\2020-04-10-15-05.png)
 
-![2020-04-11-11-52](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-11-11-52.png)
+![2020-04-11-11-52](\assets\images\springcloud-and-docker\2020-04-11-11-52.png)
 
 ##### 使用Turbine聚合监控数据
 
@@ -275,4 +275,4 @@ turbine:
 
 启动，访问http://localhost:8030/hystrix，在url一栏输入http://localhost:8030/turbine.stream，点击Monitor Stream
 
-![2020-04-11-12-37](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-11-12-37.png)
+![2020-04-11-12-37](\assets\images\springcloud-and-docker\2020-04-11-12-37.png)
