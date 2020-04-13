@@ -319,7 +319,7 @@ Zuul整合了Ribbon，启动多个`microservice-provider-user`，访问http://lo
 
 Zuul整合了Hystrix，启动`microservice-hystrix-dashboard`，访问http://localhost:8030/hystrix，输入http://localhost:8040/actuator/hystrix.stream
 
-![2020-04-13-11-22](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-13-11-22.png)
+![2020-04-13-11-22](\assets\images\springcloud-and-docker\2020-04-13-11-22.png)
 
 **注：需暴露actuator/hystrix.stream端点才能访问**
 
@@ -340,7 +340,7 @@ zuul:
 
 再次访问http://localhost:8030/hystrix
 
-![2020-04-13-16-46](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-13-16-46.png)
+![2020-04-13-16-46](\assets\images\springcloud-and-docker\2020-04-13-16-46.png)
 
 可以看出现在隔离策略变为了THREAD，但HystrixThreadPoolKey默认为RibbonCommand，这意味着所有路由的HystrixCommand都会在相同的Hystrix线程池中执行，可以使用以下配置，让每个路由使用独立的线程池
 
@@ -385,13 +385,15 @@ management:
 
 启动服务，访问http://localhost:8040/actuator/routes
 
-![2020-04-13-11-33](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-13-11-33.png)
+![2020-04-13-11-33](\assets\images\springcloud-and-docker\2020-04-13-11-33.png)
 
 访问http://localhost:8040/actuator/routes/details
 
-![2020-04-13-11-34](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-13-11-34.png)
+![2020-04-13-11-34](\assets\images\springcloud-and-docker\2020-04-13-11-34.png)
 
-访问http://localhost:8040/actuator/filters![2020-04-13-11-35](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-13-11-35.png)
+访问http://localhost:8040/actuator/filters
+
+![2020-04-13-11-35](\assets\images\springcloud-and-docker\2020-04-13-11-35.png)
 
 #### 路由配置详解
 
@@ -831,7 +833,7 @@ public class MyFallbackProvider implements FallbackProvider {
 
 启动服务，关闭`microservice-consumer-movice`，访问http://localhost:8040/api/user/1
 
-![2020-04-13-16-39](F:\Cloud\Edwardjph.github.io\assets\images\springcloud-and-docker\2020-04-13-16-39.png)
+![2020-04-13-16-39](\assets\images\springcloud-and-docker\2020-04-13-16-39.png)
 
 ##### 饥饿加载
 
