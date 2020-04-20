@@ -771,7 +771,7 @@ zuul:
       disable: true
 ```
 
-##### Zuul的容错与回退
+#### Zuul的容错与回退
 
 ```java
 @Component
@@ -835,7 +835,7 @@ public class MyFallbackProvider implements FallbackProvider {
 
 ![2020-04-13-16-39](\assets\images\springcloud-and-docker\2020-04-13-16-39.png)
 
-##### 饥饿加载
+#### 饥饿加载
 
 ```yml
 zuul:
@@ -844,7 +844,7 @@ zuul:
       enabled: true
 ```
 
-##### Query String编码
+#### Query String编码
 
 当处理请求时，query param会被编码，这些参数在route过滤器中构建请求时，将被重新编码。如果query param使用JavaScript的encodeURIComponent()方法进行编码，那么重新编码的结果可能与原始值不同；
 
