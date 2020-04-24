@@ -281,3 +281,7 @@ management:
 
 ##### 安装JCE
 
+https://github.com/nszm-jph/nszm-jph.github.io/blob/master/assets/files/UnlimitedJCEPolicyJDK8.7z
+
+下载解压，将解压出来的两个jar文件替换JDK/jre/lib/security目录中的jar文件
+
