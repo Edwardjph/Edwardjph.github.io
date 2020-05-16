@@ -1,22 +1,9 @@
 ---
-@RestController
-@RefreshScope
-public class ConfigClientController {
-
-    @Value("${profile}")
-    private String profile;
-
-    @GetMapping("/profile")
-    public String hello() {
-        return this.profile;
-    }
-}title: springcloud and docker(三)
+title: springcloud and docker(三)
 tags: ReadingNotes
 ---
 
 ### 第九章、使用spring cloud config统一管理微服务配置
-
-#### 
 
 #### 新建一个git仓库（[码云](https://gitee.com/)）
 
