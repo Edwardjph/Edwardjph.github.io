@@ -26,8 +26,8 @@ sudo ./aws/install
 
 ```bash
 $ aws configure
-AWS Access Key ID [None]: AKIA5TCKUJQ2XP6UQU5U
-AWS Secret Access Key [None]: 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
+AWS Access Key ID [None]: xxxxxxxxxxxxxxx
+AWS Secret Access Key [None]: xxxxxxxxxxxxxxxxx
 Default region name [None]: us-east-2
 Default output format [None]: json
 ```
