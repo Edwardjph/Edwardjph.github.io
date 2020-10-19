@@ -365,3 +365,80 @@ sudo ./greengrassd start
 vim /greengrass/ggc/var/log/system/runtime.log
 ```
 
+# API创建greengrass组
+
+- 首先创建[策略](https://docs.aws.amazon.com/zh_cn/iot/latest/developerguide/iot-policies.html)，及权限；
+- 再创建证书，将策略附加到证书；
+- 再创建事物，及设备，将证书附加到事物；
+- 再创建组，组必须绑定一个核心设备；
+
+**相应的API：**
+
+IOT：
+
+- 创建策略：CreatePolicy
+- 将策略附加到证书：AttachPolicy
+- 创建证书：CreateCertificateFromCsr
+- 创建核心：CreateThing
+- 将证书附加到事物：AttachThingPrincipal
+
+Greengrass：
+
+- 创建核心定义：createCoreDefinition
+- 创建日志定义：createLoggerDefinition
+- 创建组：CreateGroup
+- 将角色附加到group：AssociateRoleToGroup
+
+**创建greengrass的默认策略**
+
+```
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iot:Publish",
+        "iot:Subscribe",
+        "iot:Connect",
+        "iot:Receive"
+      ],
+      "Resource": [
+        "*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iot:GetThingShadow",
+        "iot:UpdateThingShadow",
+        "iot:DeleteThingShadow"
+      ],
+      "Resource": [
+        "*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "greengrass:*"
+      ],
+      "Resource": [
+        "*"
+      ]
+    }
+  ]
+}
+```
+
+# API删除greengrass组
+
+1. **ResetDeployments**：重置部署
+2. **DeleteGroup**：删除组
+3. **ListThingPrincipals**：获取事物附加的证书列表
+4. **DetachPolicy** - detach the policy from the certificate
+5. **DetachThingPrincipal** - detach the certificate from the Thing
+6. **UpdateCertificate** to set to INACTIVE (or set `ForceDelete=true` in #4)
+7. **DeleteCertificate**
+8. **DeletePolicy**
+9. **DeleteThing**
