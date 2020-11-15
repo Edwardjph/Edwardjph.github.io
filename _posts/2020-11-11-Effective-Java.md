@@ -633,9 +633,432 @@ public class ColorPoint extends Point {
 [00:46:51:817] [INFO] - com.effectivejava.learn.method.ColorPoint.main(ColorPoint.java:41) - false
 ```
 
-同时这种方法还可能导致无限递归问题：假设Point有两个子类，如`ColorPoint`和`SmellPoint`都用这种方式，则`ColorPoint.equals(SmellPoint)` 的调用将抛出`StackOverflowError`；
+同时这种方法还可能导致无限递归问题：假设`Point`有两个子类，如`ColorPoint`和`SmellPoint`都用这种方式，则`ColorPoint.equals(SmellPoint)` 的调用将抛出`StackOverflowError`；
 
 这是一个在面向对象语言中关于等价关系的一个基本问题：
 
 **我们没法在扩展可实例化的类的同时，既增加新的值组件，同时又保留equals约定**
+
+根据“复合优先于继承”，我们可以在`ColorPoint`中加入一个私有的`Point`域
+
+```java
+@Slf4j
+public class ColorPoint{
+    private final Point point;
+    private final Color color;
+
+    public ColorPoint(int x, int y, Color color) {
+        point = new Point(x, y);
+        this.color = color;
+    }
+    
+    public Point asPoint() {
+        return point;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof ColorPoint)) {
+            return false;
+        }
+        ColorPoint cp = (ColorPoint) obj;
+        return cp.point.equals(point) && cp.color.equals(color);
+    }
+}
+```
+
+在java平台库中，有一些类扩展了可实例化的类，并添加了新的组件。例如：`java.sql.Timestamp`对`java.util.Date`进行了扩展，并添加了`nanoseconds`域。当它们被混在一起的时候，会引起不正确的行为。
+
+**equals方法的诀窍：**
+
+1. 使用==操作符检查“参数是否为这个对象的引用”
+2. 使用`instanceof`检查“参数是否为正确的类型“
+3. 把参数转换成正确的类型
+4. 对于该类中的每个关键域，检查参数中的域是否与该对象中对应的域相匹配
+
+```java
+public class PhoneNumber {
+    private final short areaCode, prefix, lineNum;
+
+    public PhoneNumber(short areaCode, short prefix, short lineNum) {
+        this.areaCode = areaCode;
+        this.prefix = prefix;
+        this.lineNum = lineNum;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (!(obj instanceof PhoneNumber)) {
+            return false;
+        }
+        PhoneNumber pn = (PhoneNumber) obj;
+        return pn.lineNum == lineNum && pn.areaCode == areaCode
+                && pn.prefix == prefix;
+    }
+}
+```
+
+**注意：**
+
+- 覆盖equals时总是要覆盖hashCode
+- 不要企图让equals过于智能
+- 不要将equals声明中的Object对象替换为其他的类型
+
+#### 补充：springboot2集成log4j2日志框架
+
+**Spring Boot 2.x**默认使用**Logback**日志框架，要使用 **Log4j2**必须先排除 **Logback**
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter</artifactId>
+    <exclusions>
+         <!--排除logback-->
+        <exclusion>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-logging</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+<!--log4j2 依赖-->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-log4j2</artifactId>
+</dependency>
+```
+
+在`resources`目录里创建`log4j2.xml`文件
+
+```xml
+ <?xml version="1.0" encoding="UTF-8"?>
+  <!--日志级别以及优先级排序: OFF > FATAL > ERROR > WARN > INFO > DEBUG > TRACE > ALL -->
+  <!--Configuration后面的status，这个用于设置log4j2自身内部的信息输出，可以不设置，当设置成trace时，你会看到log4j2内部各种详细输出-->
+  <!--monitorInterval：Log4j能够自动检测修改配置 文件和重新配置本身，设置间隔秒数-->
+  <configuration status="WARN" monitorInterval="30">
+      <!--先定义所有的appender-->
+      <appenders>
+      <!--这个输出控制台的配置-->
+          <console name="Console" target="SYSTEM_OUT">
+          <!--输出日志的格式-->
+              <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] - %l - %m%n"/>
+          </console>
+      <!--文件会打印出所有信息，这个log每次运行程序会自动清空，由append属性决定，这个也挺有用的，适合临时测试用-->
+      <File name="log" fileName="log/test.log" append="false">
+         <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level %class{36} %L %M - %msg%xEx%n"/>
+      </File>
+      <!-- 这个会打印出所有的info及以下级别的信息，每次大小超过size，则这size大小的日志会自动存入按年份-月份建立的文件夹下面并进行压缩，作为存档-->
+          <RollingFile name="RollingFileInfo" fileName="${sys:user.home}/logs/info.log"
+                       filePattern="${sys:user.home}/logs/?{date:yyyy-MM}/info-%d{yyyy-MM-dd}-%i.log">
+              <!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->        
+              <ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="DENY"/>
+              <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] - %l - %m%n"/>
+              <Policies>
+                  <TimeBasedTriggeringPolicy/>
+                  <SizeBasedTriggeringPolicy size="100 MB"/>
+              </Policies>
+          </RollingFile>
+          <RollingFile name="RollingFileWarn" fileName="${sys:user.home}/logs/warn.log"
+                       filePattern="${sys:user.home}/logs/?{date:yyyy-MM}/warn-%d{yyyy-MM-dd}-%i.log">
+              <ThresholdFilter level="warn" onMatch="ACCEPT" onMismatch="DENY"/>
+              <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] - %l - %m%n"/>
+              <Policies>
+                  <TimeBasedTriggeringPolicy/>
+                  <SizeBasedTriggeringPolicy size="100 MB"/>
+              </Policies>
+          <!-- DefaultRolloverStrategy属性如不设置，则默认为最多同一文件夹下7个文件，这里设置了20 -->
+              <DefaultRolloverStrategy max="20"/>
+          </RollingFile>
+          <RollingFile name="RollingFileError" fileName="${sys:user.home}/logs/error.log"
+                       filePattern="${sys:user.home}/logs/?{date:yyyy-MM}/error-%d{yyyy-MM-dd}-%i.log">
+              <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/>
+              <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] - %l - %m%n"/>
+              <Policies>
+                  <TimeBasedTriggeringPolicy/>
+                  <SizeBasedTriggeringPolicy size="100 MB"/>
+              </Policies>
+          </RollingFile>
+      </appenders>
+      <!--然后定义logger，只有定义了logger并引入的appender，appender才会生效-->
+      <loggers>
+          <!--过滤掉spring和mybatis的一些无用的DEBUG信息-->
+          <logger name="org.springframework" level="INFO"/> 
+          <logger name="org.mybatis" level="INFO"/>
+          <root level="all">
+              <appender-ref ref="Console"/>
+              <appender-ref ref="RollingFileInfo"/>
+              <appender-ref ref="RollingFileWarn"/>
+              <appender-ref ref="RollingFileError"/>
+          </root>
+      </loggers>
+  </configuration>
+```
+
+使用了`lombok`中的`@Slf4j` 注解调用 **`org.slf4j.Logger`** 对象
+
+### 第11条：覆盖`equals`时总是要覆盖`hashCode`
+
+如果不这样做将导致该类无法结合所有基于散列的集合一起正常工作，例如使用第10条中的`PhoneNumber`类的实例作为建：
+
+```java
+public static void main(String[] args) {
+    Map<PhoneNumber, String> map = new HashMap<>();
+    map.put(new PhoneNumber(707, 867, 5309), "Jenny");
+    log.info(map.get(new PhoneNumber(707, 867, 5309)));
+}
+---------------------------------------------------------
+[20:37:05:398] [INFO] - com.effectivejava.learn.method.PhoneNumber.main(PhoneNumber.java:47) - null
+```
+
+put与get中的key在equals时总是相等的，但是具有不同的散列码，所以结果为空；
+
+一个简单的实现方法
+
+```java
+@Override
+    public int hashCode() {
+        int result = Short.hashCode(areaCode);
+        result = 31 * result + Short.hashCode(prefix);
+        result = 31 * result + Short.hashCode(lineNum);
+        return result;
+    }
+```
+
+也可以使用
+
+```java
+@Override
+    public int hashCode() {
+        return Objects.hash(areaCode, prefix, lineNum);
+    }
+```
+
+但运行速度会更慢一些，因为这会引发数组的创建，以便传入数目可变的参数，如果参数中有基本类型，还需要装箱和拆箱；
+
+### 第12条：始终覆盖`tostring`
+
+好的tostring实现可以使类用起来更加舒适，使用这个类的系统也更易于调试
+
+```java
+@Override
+    public String toString() {
+        return "PhoneNumber{" +
+                "areaCode=" + areaCode +
+                ", prefix=" + prefix +
+                ", lineNum=" + lineNum +
+                '}';
+    }
+```
+
+### 第13条：谨慎的覆盖clone
+
+`Cloneable`接口的目的是作为对象的一个`minin`接口，表明这个对象是运行克隆的；但遗憾的是它并没有达到这个目的，因为它缺少一个clone方法，而Object的clone方法是受保护的；
+
+当每一个属性都是一个基本类型的值，或者是一个指向不可变对象的引用，比如`PhoneNumber`类，则可以这样实现clone方法：
+
+```java
+@Override
+    public PhoneNumber clone() {
+        try {
+            return (PhoneNumber) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
+    }
+```
+
+**注意：不可变的类永远不应该提供clone方法**
+
+如果对象中属性包含可变对象的引用，则不能使用上述方法，因为修改原始数组将影响到克隆对象，我们的这样：
+
+```java
+public class Stack {
+    private Object[] elements;
+    private int size = 0;
+    private static final int DEFAULT_INITIAL_CAPACITY = 16;
+    
+    public Stack() {
+        this.elements = new Object[DEFAULT_INITIAL_CAPACITY];
+    }
+    
+    public void push(Object e) {
+        ensureCapacity();
+        elements[size++] = e;
+    }
+    
+    public Object pop() {
+        if (size == 0){
+            throw new EmptyStackException();
+        }
+        Object result = elements[--size];
+        elements[size] = null;
+        return result;
+    }
+    
+    private void ensureCapacity() {
+        if (elements.length == size) {
+            elements = Arrays.copyOf(elements, 2*size +1);
+        }
+    }
+
+    @Override
+    protected Stack clone() {
+        try {
+            Stack result = (Stack) super.clone();
+            result.elements = elements.clone();
+            return result;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
+    }
+}
+```
+
+**注意：如果elements属性是final的，则上述方案将不能正常使用**
+
+递归调用clone有时还不够，例如，你正在为一个散列表编写clone方法，如果使用上述方案，则克隆对象与原始对象引用的对象是一样的，从而引起不正确的行为，我们可以使用以下方式：
+
+```java
+public class HashTable implements Cloneable {
+    private Entry[] buckets = ...;
+
+    private static class Entry {
+        final Object key;
+        Object value;
+        Entry next;
+
+        Entry(Object key, Object value, Entry next) {
+            this.key = key;
+            this.value = value;
+            this.next = next;
+        }
+
+        Entry deepCopy() {
+            Entry result = new Entry(key, value, next);
+            for (Entry p = result; p.next != null; p = p.next) {
+                p.next = new Entry(p.next.key, p.next.value, p.next.next);
+            }
+            return result;
+        }
+    }
+
+    @Override
+    public HashTable clone() {
+        try {
+            HashTable result = (HashTable) super.clone();
+            result.buckets = new Entry[buckets.length];
+            for (int i = 0; i < buckets.length; i++) {
+                if (buckets[i] != null) {
+                    result.buckets[i] = buckets[i].deepCopy();
+                }
+            }
+            return result;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
+    }
+}
+```
+
+鉴于 clone() 方法存在这么多限制:
+
+**除了拷贝数组，其他任何情况都不应该去覆盖 clone() 方法，也不该去调用它**
+
+**对象拷贝的更好的办法是提供一个拷贝构造器或者拷贝工厂：**
+
+```java
+public final class PolicyCopyConstructor {
+
+    private String code;
+    private int applicantAge;
+    private Liability liability;
+    private List<String> specialDescriptions;
+
+    public PolicyCopyConstructor(PolicyCopyConstructor policy) {
+        this.code = policy.code;
+        this.applicantAge = policy.applicantAge;
+        this.liability = policy.liability;
+        this.specialDescriptions = policy.specialDescriptions;
+    }
+}
+```
+
+```java
+public final class PolicyCopyFactory {
+
+    private String code;
+    private int applicantAge;
+    private Liability liability;
+    private List<String> specialDescriptions;
+
+    public static PolicyCopyFactory newInstance(PolicyCopyFactory policy) {
+        PolicyCopyFactory copyPolicy = new PolicyCopyFactory();
+        copyPolicy.setCode(policy.getCode());
+        copyPolicy.setApplicantAge(policy.getApplicantAge());
+        copyPolicy.setLiability(policy.getLiability());
+        copyPolicy.setSpecialDescriptions(policy.getSpecialDescriptions());
+        return copyPolicy;
+    }
+}
+```
+
+- Copy constructor & Copy factory 的优势：
+
+1. 不依赖于某一种带有风险的，语言之外的对象创建机制（clone 是 native 方法）。
+2. 不会与 final 域的正常使用发生冲突（clone 架构与引用可变对象的 final 域的正常使用是不兼容的）。
+3. 不会抛出受检异常。
+4. 不需要类型转换。
+
+### 第14条：考虑实现Comparable接口
+
+如果你正在编写一个值类，它具有非常明显的内在排序关系，比如按字母顺序、按数值顺序或者按年代顺序，那么你就应该坚决考虑实现Comparable接口；
+
+`CompareTo`方法也必须遵守：自反性、对称性与传递性；**因此与equals相同：无法在用新的值组件扩展可实例化的类时，同时保持`CompareTo`约定；**
+
+```java
+public class CaseInsensitiveString implements Comparable<CaseInsensitiveString> {
+    private final String s;
+
+    public CaseInsensitiveString(String s) {
+        this.s = Objects.requireNonNull(s);
+    }
+
+    @Override
+    public int compareTo(CaseInsensitiveString o) {
+        return String.CASE_INSENSITIVE_ORDER.compare(s, o.s);
+    }
+}
+```
+
+如果一个类有多个关键属性：
+
+```java
+@Override
+    public int compareTo(PhoneNumber o) {
+        int result = Short.compare(areaCode, o.areaCode);
+        if (result == 0) {
+            result = Short.compare(prefix, o.prefix);
+            if (result == 0) {
+                result = Short.compare(lineNum, o.lineNum);
+            }
+        }
+        return result;
+    }
+```
+
+在java8中，Comparator接口配置了一组比较器构造方法，是的比较器的构造工作变得非常顺畅：
+
+```java
+private static final Comparator<PhoneNumber> COMPARATOR =
+            Comparator.comparingInt((PhoneNumber pn) -> pn.areaCode)
+                    .thenComparingInt(pn -> pn.prefix)
+                    .thenComparingInt(pn -> pn.lineNum);
+
+    @Override
+    public int compareTo(PhoneNumber o) {
+        return COMPARATOR.compare(this, o);
+    }
+```
 
